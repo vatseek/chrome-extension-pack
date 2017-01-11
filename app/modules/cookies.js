@@ -73,21 +73,7 @@ class Cookies {
     }
 
     getSaved() {
-        //let store = new Stores(this.url);
-
-        //store.clearData();
-
-        //store.setData({mas: {s: "asdfasd"}}).then(() =>{
-        //    store.setData({ole: 3}).then(() => {
-        //        store.getData().then(res => {
-        //            console.log(res);
-        //        })
-        //    });
-        //});
-
-        this.getCookies().then(result => {
-            console.log(result, JSON.stringify(result).length);
-        });
+        return this.store.getData();
     }
 }
 
