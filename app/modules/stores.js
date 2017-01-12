@@ -35,6 +35,18 @@ class Stores {
         data[this.hash] = {};
         chrome.storage.sync.set(data, function() { });
     }
+
+    remove(name) {
+        return new Promise((resolve, reject) => {
+            this.getData().then(res => {
+                let toSave = _.omit(res, name) || {};
+                let result = {[this.hash]: toSave};
+                chrome.storage.sync.set(result, function() {
+                    resolve();
+                });
+            });
+        });
+    }
 }
 
 export default Stores;

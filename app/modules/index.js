@@ -1,21 +1,30 @@
-import Cookies from './cookies.js'
-import Stores from './stores.js'
+import * as _ from 'underscore';
 import React from 'react';
 import ReactDOM from 'react-dom';
+
+import Cookies from './cookies.js'
+import Stores from './stores.js'
 
 export const Cookie = Cookies;
 export const Store = Stores;
 
 const Row = React.createClass({
+    getDefaultProps() {
+        return {
+            handleRun: function() { },
+            handleDelete: function() { },
+            name: ''
+        }
+    },
     render() {
         return (
             <tr>
-                <td>Alvin</td>
+                <td>{this.props.name}</td>
                 <td className="right-align">
-                    <a className="btn-floating disabled">
+                    <a className="btn-floating" onClick={() => {this.props.handleRun(this.props.name)}} >
                         <i className="material-icons">loop</i>
                     </a>
-                    <a className="btn-floating red">
+                    <a className="btn-floating red" onClick={() => {this.props.handleDelete(this.props.name)}}>
                         <i className="material-icons">delete</i>
                     </a>
                 </td>
@@ -35,9 +44,11 @@ const Table = React.createClass({
                 </tr>
                 </thead>
                 <tbody>
-                <Row />
-                <Row />
-                <Row />
+                    {_.map(this.props.data, (item, index) => {
+                        return (
+                            <Row key={index} name={index} data={item} {...this.props}/>
+                        )
+                    })}
                 </tbody>
             </table>
         );
@@ -46,14 +57,29 @@ const Table = React.createClass({
 
 const app = React.createClass({
     getInitialState() {
-        return { name: '' }
+        return {
+            name: '',
+            data: this.props.data
+        }
     },
     handleClick(e) {
         e.preventDefault();
-        //TODO: click
+        if (this.state.name) {
+            this.props.engine.create(this.state.name).then(data => {
+                this.setState({data});
+            });
+        }
     },
     handleChange(e) {
         this.setState({ name: e.target.value});
+    },
+    handleRun(name) {
+        this.props.engine.load(name);
+    },
+    handleDelete(name) {
+        this.props.engine.remove(name).then((data) => {
+            this.setState({data});
+        });
     },
     render() {
         return (
@@ -70,7 +96,7 @@ const app = React.createClass({
                         </div>
                     </div>
                 </form>
-                <Table {...this.props} />
+                <Table {...this.props} data={this.state.data} handleRun={this.handleRun} handleDelete={this.handleDelete} />
             </div>
         );
     }

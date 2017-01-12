@@ -10,7 +10,7 @@ window.onload = function() {
     const cookies = new Cookie();
     cookies.init().then(() => {
         cookies.getSaved().then(res => {
-            ReactDOM.render(<App data={res} />, document.getElementById('root'));
+            ReactDOM.render(<App data={res} engine={cookies} />, document.getElementById('root'));
         });
     });
 };
