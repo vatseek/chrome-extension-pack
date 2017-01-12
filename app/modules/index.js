@@ -35,6 +35,13 @@ const Row = React.createClass({
 
 const Table = React.createClass({
     render() {
+        if (_.isEmpty(this.props.data)) {
+            return (
+                <div className="card-panel yellow lighten-2">
+                    <b>Info!</b> Just save your current state to load it in future.
+                </div>
+            );
+        }
         return (
             <table className="striped">
                 <thead>
@@ -91,7 +98,7 @@ const app = React.createClass({
                         </div>
                         <div className="input-field col s3">
                             <button className="btn waves-effect waves-light" type="submit" name="action" onClick={this.handleClick}>
-                                Add<i className="mdi-content-send right"></i>
+                                Save<i className="mdi-content-send right"></i>
                             </button>
                         </div>
                     </div>
