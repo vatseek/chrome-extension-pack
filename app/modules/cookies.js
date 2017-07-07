@@ -1,4 +1,3 @@
-const async = require('async');
 import Stores from './stores';
 import * as _ from 'underscore';
 
@@ -19,7 +18,7 @@ class Cookies {
 
   __getUrl() {
     const getTab = new Promise(res => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tab) => {
+      chrome.tabs.query({active: true, currentWindow: true}, (tab) => {
         return res(tab);
       });
     });
@@ -53,7 +52,7 @@ class Cookies {
 
   __removeCookie(url, name) {
     return new Promise(res => {
-      chrome.cookies.remove({ url, name }, () => {
+      chrome.cookies.remove({url, name}, () => {
         res(true);
       });
     });
@@ -110,13 +109,13 @@ class Cookies {
       data[name] = cookies;
       return this.store.setData(data);
     }).then(() => {
-      this.store.getData();
+      return this.store.getData();
     });
   }
 
   remove(name) {
-    return this.store(name).then(() => {
-      return this.getData();
+    return this.store.remove(name).then(() => {
+      return this.store.getData();
     });
   }
 
