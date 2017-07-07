@@ -3,164 +3,141 @@ import Stores from './stores';
 import * as _ from 'underscore';
 
 class Cookies {
-    constructor() {
-        this.url = null;
-        this.store = null;
+  constructor() {
+    this.url = null;
+    this.store = null;
+  }
+
+  init() {
+    return this.__getUrl().then(url => {
+      if (!url) Promise.reject(url);
+      this.url = url;
+      this.store = new Stores(url);
+      return Promise.resolve();
+    });
+  }
+
+  __getUrl() {
+    const getTab = new Promise(res => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tab) => {
+        return res(tab);
+      });
+    });
+
+    return getTab.then(tabs => {
+      if (!_.isArray(tabs)) {
+        return Promise.reject(new Error('No tabs'));
+      }
+      const url = (new URL(_.first(tabs).url)).hostname;
+      return Promise.resolve(url.replace(/^www(.*)/, '$1'));
+    })
+  }
+
+  __getCookiesByDomain(domain) {
+    return new Promise(res => {
+      chrome.cookies.getAll({domain: domain}, (cookies) => {
+        res(cookies);
+      });
+    })
+  }
+
+  __getCurrentTabCookies() {
+    return this.__getUrl().then(url => {
+      return this.__getCookiesByDomain(url);
+    }).then(cookies => {
+      return Promise.resolve(cookies);
+    }).catch(e => {
+      return Promise.reject(e);
+    })
+  }
+
+  __removeCookie(url, name) {
+    return new Promise(res => {
+      chrome.cookies.remove({ url, name }, () => {
+        res(true);
+      });
+    });
+  }
+
+  __addCookie(cookie) {
+    return new Promise((resolve, reject) => {
+      chrome.cookies.set(cookie, (result) => {
+        resolve(cookie);
+      });
+    });
+  }
+
+  __getUrlString(domain, secure) {
+    if (domain[0] == '.') {
+      domain = 'www' + domain;
     }
-
-    init() {
-        let self = this;
-        return new Promise((resolve, reject) => {
-            this._getUrl(function(err, url) {
-                if (!err) {
-                    self.url = url;
-                    self.store = new Stores(url);
-                    resolve();
-                }
-                reject(err);
-            })
-        });
+    if (secure) {
+      return `https://${domain}/`;
     }
+    return `http://${domain}/`;
+  }
 
-    _getTab(callback) {
-        chrome.tabs.getSelected(null, (tab) => {
-            return callback(tab);
-        });
-    }
+  __setByDomain(domain, data) {
+    return this.__getCookiesByDomain(domain).then(cookies => {
+      let promises = [];
+      _.each(cookies, cookie => {
+        const url = this.__getUrlString(domain, cookie.secure);
+        promises.push(this.__removeCookie(url, cookie.name))
+      });
+      return Promise.all(promises);
+    }).then(() => {
+      let promises = [];
+      _.each(data, item => {
+        item.url = this.__getUrlString(domain, item.secure);
+        item = _.omit(item, ['hostOnly', 'session']);
+        promises.push(this.__addCookie(item));
+      });
+      return Promise.all(promises);
+    });
+  }
 
-    _getUrl(callback) {
-        this._getTab((tab) => {
-            const url = (new URL(tab.url)).hostname;
-            if (url) {
-                return callback(null, url);
-            }
-            return callback(new Error('No url'))
-        });
-    }
+  getCookies() {
+    return this.__getCurrentTabCookies();
+  }
 
-    _getByDomain(domain, callback) {
-        chrome.cookies.getAll({domain: domain}, (cookies) => {
-            callback(null, cookies);
-        });
-    }
+  getSaved() {
+    return this.store.getData();
+  }
 
-    _setByDomain(domain, newData, callback) {
-        const self = this;
-        async.waterfall([
-            function (callback) {
-                //Get all by domain
-                return self._getByDomain(domain, callback);
-            },
-            function(cookies, callback) {
-                for (let i in cookies) {
-                    let url = '';
-                    if (cookies[i].secure) {
-                        url = `https://${domain}/`;
-                    } else {
-                        url = `http://${domain}/`;
-                    }
-                    chrome.cookies.remove({ url: url, name: cookies[i].name});
-                }
-                setTimeout(function() {
-                    callback(null, {});
-                }, 50);
-            },
-            function (res, callback) {
-                //Set new data
-                for (let i in newData) {
-                    let item = newData[i];
-                    item.url = item.secure ? `https://${item.domain}` : `http://${item.domain}`;
-                    item = _.omit(item, ['hostOnly', 'session']);
-                    chrome.cookies.set(item);
-                }
-                setTimeout(function() {
-                    callback(null, {});
-                }, 50);
-            }
+  create(name) {
+    let data = {};
+    return this.getCookies().then(cookies => {
+      data[name] = cookies;
+      return this.store.setData(data);
+    }).then(() => {
+      this.store.getData();
+    });
+  }
 
-        ], function (err, result) {
-            callback(err, result);
-        });
-    }
+  remove(name) {
+    return this.store(name).then(() => {
+      return this.getData();
+    });
+  }
 
-    _getCurrent(callback) {
-        const self = this;
-        async.waterfall([
-            function (callback) {
-                self._getUrl(callback);
-            },
-            function (domain, callback) {
-                self._getByDomain(domain, callback)
-            }
-        ], function (err, result) {
-            if (err) {
-                callback(err, null);
-            } else {
-                callback(null, result);
-            }
-        });
-    }
+  reload() {
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      chrome.tabs.reload(tabs[0].id);
+    });
+  }
 
-    getCookies() {
-        return new Promise((resolve, reject) => {
-            this._getCurrent((err, res) => {
-                if (err) {
-                    return reject(err);
-                }
-                resolve(res);
-            });
-        });
-    }
-
-    getSaved() {
-        return this.store.getData();
-    }
-
-    create(name) {
-        let data = {};
-        return new Promise((res, rej) => {
-            this.getCookies().then(cookies => {
-                data[name] = cookies;
-                this.store.setData(data).then(() => {
-                    this.store.getData().then(result => {
-                        res(result);
-                    });
-                });
-            });
-        });
-    }
-
-    remove(name) {
-        return new Promise((res, rej) => {
-            this.store.remove(name).then(() =>{
-                this.store.getData().then(result => {
-                    res(result);
-                });
-            });
-        });
-    }
-
-    load(name) {
-        return new Promise((res, rej) => {
-            this.store.getData().then(result => {
-                const data = _.filter(result, function(item, index) {
-                    return index == name
-                });
-                const cookies = _.first(data);
-                if (!cookies) {
-                    return reject(new Error('no data'));
-                }
-
-                this._setByDomain(this.url, cookies, () => {
-                    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                        console.log(tabs);
-                        chrome.tabs.reload(tabs[0].id);
-                    });
-                    res();
-                })
-            });
-        });
-    }
+  load(name) {
+    return this.store.getData().then(result => {
+      const data = _.filter(result, function (item, index) {
+        return index == name
+      });
+      const cookies = _.first(data);
+      if (!cookies) {
+        return Promise.reject(new Error('no data'));
+      }
+      return this.__setByDomain(this.url, cookies)
+    });
+  }
 }
 
 export default Cookies;

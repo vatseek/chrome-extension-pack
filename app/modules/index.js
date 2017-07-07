@@ -73,6 +73,7 @@ const app = React.createClass({
         e.preventDefault();
         if (this.state.name) {
             this.props.engine.create(this.state.name).then(data => {
+                console.log(data);
                 this.setState({data});
             });
         }
@@ -81,7 +82,9 @@ const app = React.createClass({
         this.setState({ name: e.target.value});
     },
     handleRun(name) {
-        this.props.engine.load(name);
+        this.props.engine.load(name).then(res => {
+            this.props.engine.reload();
+        });
     },
     handleDelete(name) {
         this.props.engine.remove(name).then((data) => {
@@ -91,6 +94,7 @@ const app = React.createClass({
     render() {
         return (
             <div>
+                <a href="#" onClick={this.handleClick}>test</a>
                 <form className="col s12">
                     <div className="row">
                         <div className="input-field col s9">
