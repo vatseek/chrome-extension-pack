@@ -72,14 +72,17 @@ const app = React.createClass({
   getInitialState() {
     return {
       name: '',
-      data: this.props.data
+      data: this.props.data,
+      logout: true,
     }
   },
-  handleClick(e) {
+  handleSave(e) {
     e.preventDefault();
     if (this.state.name) {
-      this.props.engine.create(this.state.name).then(data => {
-        console.log(data);
+      this.props.engine.create(this.state.name, this.state.logout).then(data => {
+        if (this.state.logout) {
+          this.props.engine.reload();
+        }
         this.setState({data});
       });
     }
@@ -97,17 +100,21 @@ const app = React.createClass({
       this.setState({data});
     });
   },
+  handleChangeLogin(e) {
+    this.setState({logout: !this.state.logout});
+  },
   render() {
     return (
       <div>
         <form className="col s12">
           <div className="row">
             <div className="input-field col s9">
-              <input id="first_name" type="text" className="validate" placeholder="First Name"
-                     onChange={this.handleChange}/>
+              <input type="text" className="validate short-input" placeholder="Snapshot name" onChange={this.handleChange}/>
+              <input type="checkbox" id="logout" value="1" checked={this.state.logout} onChange={this.handleChangeLogin} />
+              <label htmlFor="logout">Logout after save (to login another)</label>
             </div>
             <div className="input-field col s3">
-              <button className="btn waves-effect waves-light" type="submit" name="action" onClick={this.handleClick}>
+              <button className="btn waves-effect waves-light" type="submit" name="action" onClick={this.handleSave}>
                 Save<i className="mdi-content-send right"></i>
               </button>
             </div>

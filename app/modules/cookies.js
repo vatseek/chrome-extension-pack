@@ -95,6 +95,19 @@ class Cookies {
     });
   }
 
+  clearCookies() {
+    return this.__getUrl().then(domain => {
+      return this.__getCookiesByDomain(domain).then(cookies => {
+        let promises = [];
+        _.each(cookies, cookie => {
+          const url = this.__getUrlString(domain, cookie.secure);
+          promises.push(this.__removeCookie(url, cookie.name))
+        });
+        return Promise.all(promises);
+      });
+    });
+  }
+
   getCookies() {
     return this.__getCurrentTabCookies();
   }
@@ -103,11 +116,16 @@ class Cookies {
     return this.store.getData();
   }
 
-  create(name) {
+  create(name, logout) {
     let data = {};
     return this.getCookies().then(cookies => {
       data[name] = cookies;
       return this.store.setData(data);
+    }).then(() => {
+      if (!logout) {
+        return Promise.resolve();
+      }
+      return this.clearCookies();
     }).then(() => {
       return this.store.getData();
     });
